@@ -4,6 +4,10 @@ const BACKUP_KEY = 'memoapp.preImportBackup.v1';
 let pendingImport = null;
 const PAGE_SIZE_KEY = 'memoapp.pageSize.v1';
 const PAGE_SIZES = [5, 10, 15, 50];
+const LAYOUT_KEY = 'memoapp.layout.v1';
+const LAYOUTS = ['list', 'table', 'sticky'];
+let layout = 'list';
+try { const saved = localStorage.getItem(LAYOUT_KEY); if (LAYOUTS.includes(saved)) layout = saved; } catch {}
 let currentPage = 1;
 let pageSize = 5;
 try { const saved = Number(localStorage.getItem(PAGE_SIZE_KEY)); if (PAGE_SIZES.includes(saved)) pageSize = saved; } catch {}
@@ -69,6 +73,12 @@ function render() {
     button.addEventListener('click', () => { currentPage = number; render(); });
     $('page-numbers').append(button); lastPageNumber = number;
   }
+  for (const type of LAYOUTS) $('layout-' + type).setAttribute('aria-pressed', String(layout === type));
+  $('list').className = layout === 'sticky' ? 'sticky-grid' : '';
+  $('list').hidden = layout === 'table' && filtered.length > 0;
+  $('table-wrap').hidden = layout !== 'table' || !filtered.length;
+  $('table-date-heading').textContent = field === 'createdAt' ? '작성일' : '수정일';
+  $('table-body').replaceChildren();
   $('list').replaceChildren();
   if (!filtered.length) {
     const empty = document.createElement('div'); empty.className = 'empty';
@@ -76,7 +86,7 @@ function render() {
     $('list').append(empty);
   }
   for (const note of visible) {
-    const fragment = $('note-template').content.cloneNode(true);
+    const fragment = $(layout === 'table' ? 'table-template' : 'note-template').content.cloneNode(true);
     const display = splitContent(note.content);
     fragment.querySelector('h3').textContent = display.title || '제목 없음';
     if (note.conflictOf) fragment.querySelector('.note-label').textContent = '충돌 사본';
@@ -86,6 +96,11 @@ function render() {
     const displayedAt = note[$('sort').value];
     time.dateTime = displayedAt;
     time.textContent = new Intl.DateTimeFormat('ko-KR', {dateStyle:'medium',timeStyle:'short'}).format(new Date(displayedAt));
+    fragment.querySelector('.view').addEventListener('click', () => {
+      $('dialog-title').textContent = display.title || '제목 없음';
+      $('dialog-content').textContent = display.body;
+      $('memo-dialog').showModal();
+    });
     fragment.querySelector('.edit').addEventListener('click', () => {
       if (!canLeaveEditor()) return;
       editingId = note.id; $('body').value = note.content;
@@ -100,7 +115,7 @@ function render() {
       if (editingId === note.id) resetEditor();
       render(); status('메모를 삭제했습니다.');
     });
-    $('list').append(fragment);
+    $(layout === 'table' ? 'table-body' : 'list').append(fragment);
   }
 }
 $('memo-form').addEventListener('submit', event => {
@@ -116,6 +131,11 @@ $('memo-form').addEventListener('submit', event => {
 });
 $('cancel').addEventListener('click', () => { if (canLeaveEditor()) resetEditor(); });
 $('body').addEventListener('input', () => { $('characters').textContent = `${$('body').value.length.toLocaleString()}자`; });
+for (const type of LAYOUTS) $('layout-' + type).addEventListener('click', () => {
+  layout = type;
+  try { localStorage.setItem(LAYOUT_KEY, layout); } catch { status('보기 방식을 기억하지 못했습니다. 현재 화면에는 적용했습니다.'); }
+  render();
+});
 $('search').addEventListener('input', () => { currentPage = 1; render(); });
 $('page-size').value = String(pageSize);
 $('page-size').addEventListener('change', () => {
@@ -197,5 +217,6 @@ window.addEventListener('storage', event => {
   if (storageHealthy) status('다른 탭의 변경을 반영했습니다. 입력 중인 내용은 유지됩니다.');
 });
 notes = loadNotes(); render();
+
 
 
