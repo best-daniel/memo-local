@@ -113,22 +113,40 @@ $('import').addEventListener('click', () => {
   if (isDirty()) { status('입력 중인 메모를 저장하거나 취소한 뒤 가져오세요.'); return; }
   $('import-file').click();
 });
+function assertImportable() {
+  if (!storageHealthy || isDirty()) throw new Error('입력 중인 메모를 저장하거나 취소하세요.');
+}
+function previewImport(text, name) {
+  clearImport();
+  assertImportable();
+  if (new Blob([text]).size > 10 * 1024 * 1024) throw new Error('10MB 이하의 JSON 파일을 선택하세요.');
+  const incoming = MemoTransfer.parse(text);
+  const snapshot = localStorage.getItem(KEY);
+  const current = snapshot === null ? [] : MemoTransfer.normalize(JSON.parse(snapshot));
+  const plan = MemoTransfer.merge(current, incoming);
+  pendingImport = {plan, snapshot};
+  const c = plan.counts;
+  $('import-summary').textContent = `${name}: 추가 ${c.added} · 갱신 ${c.updated} · 중복 ${c.duplicate} · 기존 최신 유지 ${c.kept} · 충돌 사본 ${c.conflict}개`;
+  $('import-preview').hidden = false;
+  $('import-confirm').focus();
+}
+window.MemoAppTransfer = {
+  assertImportable,
+  preview:previewImport,
+  exportData() {
+    if (!storageHealthy) throw new Error('저장소를 읽을 수 없습니다.');
+    if (isDirty()) throw new Error('입력 중인 메모를 먼저 저장하세요.');
+    const raw = localStorage.getItem(KEY);
+    return {version:1, exportedAt:new Date().toISOString(), notes:raw === null ? [] : MemoTransfer.normalize(JSON.parse(raw))};
+  }
+};
 $('import-file').addEventListener('change', async () => {
   const file = $('import-file').files[0];
   clearImport();
   if (!file) return;
   try {
     if (file.size > 10 * 1024 * 1024) throw new Error('10MB 이하의 JSON 파일을 선택하세요.');
-    const incoming = MemoTransfer.parse(await file.text());
-    if (!storageHealthy || isDirty()) throw new Error('현재 입력 또는 저장소 상태가 바뀌었습니다. 메모를 저장한 뒤 다시 가져오세요.');
-    const snapshot = localStorage.getItem(KEY);
-    const current = snapshot === null ? [] : MemoTransfer.normalize(JSON.parse(snapshot));
-    const plan = MemoTransfer.merge(current, incoming);
-    pendingImport = {plan, snapshot};
-    const c = plan.counts;
-    $('import-summary').textContent = `${file.name}: 추가 ${c.added} · 갱신 ${c.updated} · 중복 ${c.duplicate} · 기존 최신 유지 ${c.kept} · 충돌 사본 ${c.conflict}개`;
-    $('import-preview').hidden = false;
-    $('import-confirm').focus();
+    previewImport(await file.text(), file.name);
   } catch (error) { status(error.message || '파일을 읽을 수 없습니다.'); }
 });
 $('import-cancel').addEventListener('click', clearImport);

@@ -1,6 +1,6 @@
 # Memo Local — PoC 1
 
-메모 핵심 기능을 먼저 검증하는 정적 웹앱입니다. 설치할 패키지나 빌드 과정이 없습니다.
+메모 핵심 기능을 먼저 검증하는 정적 웹앱입니다. 설치할 외부 패키지는 없습니다. Vercel 배포에서는 공통 Google 설정을 정적 파일로 생성하는 Node 빌드를 실행합니다.
 
 ## 기능
 
@@ -29,7 +29,7 @@ python -m http.server 8000 --directory .
 
 ## Vercel 배포
 
-저장소를 연결한 후 Root Directory를 `.`, Framework Preset을 `Other`로 선택합니다. Build Command는 비워 두고 Output Directory는 `.`로 설정합니다. API 키나 환경변수는 필요하지 않습니다. 이번 작업에서는 배포하지 않았습니다.
+저장소를 연결한 후 Root Directory를 `.`, Framework Preset을 `Other`로 선택합니다. Build Command는 `node build.cjs`, Output Directory는 `dist`입니다. Google Drive 사용을 위한 환경변수는 아래 운영자 최초 설정을 참고하세요.
 
 ## 저장 범위
 
@@ -97,6 +97,52 @@ python -m http.server 8000 --directory .
 ```bash
 node --test transfer.test.cjs
 ```
+
+## Google Drive — 일반 사용자는 연결 버튼만 사용
+
+`feature/google_drive` 브랜치에서 작업합니다. 공통 메모 서버나 DB는 없습니다. 사용자가 선택한 Google 계정과 폴더에만 백업합니다. 연결은 선택이며, 연결하지 않아도 기존 브라우저 메모·JSON 기능을 사용할 수 있습니다. Google 스크립트는 연결 클릭 이후에만 로드합니다.
+
+### 운영자 최초 설정 (사용자 입력 불필요)
+
+1. 하나의 Google Cloud 프로젝트에서 Google Drive API, Google Picker API를 활성화합니다.
+2. OAuth 동의 화면을 구성합니다. 개인 Google 계정 등 불특정 사용자에게 제공하려면 External 대상으로 설정하고 공개 사용 가능한 상태로 게시합니다. 테스트 모드에서는 등록한 테스트 계정만 사용할 수 있습니다. Google이 요구하는 정책/검증을 완료해야 합니다.
+3. 웹 애플리케이션 OAuth Client ID를 생성합니다. Authorized JavaScript origins에 실제 운영·Preview Origin을 등록합니다. 경로와 와일드카드는 넣지 않습니다. 고정 브랜치 Preview 주소를 권합니다.
+4. Picker API Key를 생성합니다. API와 HTTP referrer를 제한합니다. Google Picker 문서의 docs.google.com referrer 요구도 확인하세요. 동일 프로젝트의 숫자 Project Number를 확인합니다.
+5. Vercel 프로젝트 → Settings → Environment Variables에 아래 값을 등록합니다. 이번 기능 테스트에는 Preview 환경을 선택합니다.
+
+| 환경변수 | 값 |
+|---|---|
+| `GOOGLE_CLIENT_ID` | 웹 OAuth Client ID (`…apps.googleusercontent.com`) |
+| `GOOGLE_PICKER_API_KEY` | 제한을 설정한 브라우저용 Picker API Key |
+| `GOOGLE_PROJECT_NUMBER` | 같은 Google Cloud 프로젝트의 숫자 Project Number |
+
+Root Directory는 `.`, Build Command는 `node build.cjs`, Output Directory는 `dist`입니다. 추적된 vercel.json에 기본값이 있습니다. 기존 Vercel UI의 Build/Output override가 비어 있거나 위 값과 같도록 확인하고 환경변수 변경 후 재배포하세요.
+
+빌드는 허용된 세 가지 공개 설정만 drive-config.js에 생성합니다. Client Secret·refresh token은 사용하지 않으며, Vercel Functions도 없습니다. 사용자가 설정값을 입력하거나 localStorage 설정으로 덮어쓸 수 없습니다. 예전 PoC 설정은 무시합니다. 공통 설정이 없어도 기본 메모 기능은 동작하지만 Google 연결은 준비되지 않았다는 안내를 표시합니다.
+
+### 사용자 흐름
+
+1. **Google Drive 연결** → 자신의 Google 계정 로그인·drive.file 권한 동의.
+2. 연결 후 나타나는 **폴더 선택** → 본인 Drive의 쓰기 가능한 폴더 선택.
+3. **Drive에 백업** → 현재 브라우저에 저장된 메모 전체를 날짜별 새 JSON으로 업로드. 기존 파일을 덮어쓰지 않습니다.
+4. 다른 PC에서는 같은 계정 연결 → **Drive에서 가져오기** → JSON 선택 → 기존 병합 미리보기 → 백업 후 병합.
+5. **연결 해제** → 메모리 토큰 제거 및 Google 권한 철회 요청. 로컬 메모·Drive 파일은 삭제하지 않습니다.
+
+로그인만으로 자동 업로드하거나 자동 병합하지 않습니다. 로컬 메모는 브라우저 단위이며 Google 계정 전환이 로컬 메모를 분리/삭제하지 않습니다. 백업은 현재 연결된 계정에 사용자가 실행할 때만 저장합니다. 공유 PC에서는 백업 전에 연결된 계정을 확인하세요.
+
+토큰은 메모리에서만 유지하고 새로고침·만료 시 다시 연결합니다. 폴더 ID는 OAuth Client ID와 Google 계정별로 기억하며 다른 PC에서는 다시 선택합니다. drive.file은 폴더 안의 모든 기존 파일 접근을 허용하는 권한이 아니므로 가져올 파일도 Picker로 선택합니다. 공유 드라이브 전용 동작과 백그라운드 자동 동기화는 포함하지 않습니다.
+
+### 로컬 실행 및 검증
+
+환경변수가 없으면 로컬 메모만 테스트할 수 있습니다. Drive 테스트에는 위 세 환경변수를 실행 환경에 설정한 후:
+
+```bash
+node build.cjs
+python -m http.server 8000 --directory dist
+node --test transfer.test.cjs drive-client.test.cjs config.test.cjs
+```
+
+Google OAuth에는 http://localhost:8000 Origin도 등록합니다. 모의 HTTP 테스트는 실제 Google 로그인/Picker 테스트를 대신하지 않습니다.
 
 
 ## 저장소 이전

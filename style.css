@@ -2,3 +2,5 @@
 
 
 .transfer-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px}select{margin-top:12px;padding:9px;border:1px solid #dfe5dc;border-radius:8px;background:white;color:inherit;font:inherit;font-size:12px}#import-preview{margin-top:15px}#import-summary{font-size:13px;line-height:1.8;overflow-wrap:anywhere}#import-preview .actions{margin-top:20px}button:disabled{opacity:.5;cursor:not-allowed}
+
+.drive-panel{margin:25px 0}.drive-panel .transfer-actions{justify-content:flex-start;margin-top:20px}.drive-panel details{margin:18px 0}.drive-panel summary{cursor:pointer;font-size:13px}.drive-panel input{max-width:620px;display:block}.drive-panel #drive-config-save{margin-top:14px}#drive-status{font-size:13px;line-height:1.7;overflow-wrap:anywhere}#drive-origin{overflow-wrap:anywhere}
