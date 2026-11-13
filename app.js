@@ -18,6 +18,8 @@ try {
   if (settings && ['en','ko','de'].includes(settings.language)) language = settings.language;
   if (settings && LAYOUTS.includes(settings.layout) && PAGE_SIZES.includes(settings.pageSize)) { layout = settings.layout; pageSize = settings.pageSize; }
 } catch {}
+const urlLanguage = location.pathname.match(/^\/(en|ko|de)(?:\/|$)/)?.[1];
+language = urlLanguage || (location.pathname === '/' ? 'en' : language);
 MemoI18n.apply(language);
 const $ = (id) => document.getElementById(id);
 let notes = [];
@@ -155,8 +157,10 @@ $('settings-form').addEventListener('submit', event => {
   if (!['en','ko','de'].includes(nextLanguage) || !LAYOUTS.includes(nextLayout) || !PAGE_SIZES.includes(nextSize)) {
     $('settings-status').textContent = tr("보기 방법과 표시 개수를 확인하세요."); return;
   }
+  if (nextLanguage !== language && isDirty()) { $('settings-status').textContent = tr('saveBeforeLanguage'); return; }
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({layout:nextLayout, pageSize:nextSize, language:nextLanguage})); }
   catch { $('settings-status').textContent = tr("설정을 저장하지 못했습니다. 브라우저 저장소 설정을 확인하세요."); return; }
+  if (nextLanguage !== language) { location.assign('/' + nextLanguage + '/'); return; }
   language = nextLanguage; MemoI18n.apply(language);
   $('characters').textContent = tr('countChars', {n:$('body').value.length.toLocaleString(MemoI18n.locale)});
   $('editor-heading').textContent = tr(editingId ? '메모 수정' : '새 메모');
@@ -244,3 +248,9 @@ notes = loadNotes(); render();
 
 
 
+
+
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[hreflang]');
+  if (link && isDirty()) { event.preventDefault(); status(tr('saveBeforeLanguage')); }
+});

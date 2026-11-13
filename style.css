@@ -11,3 +11,6 @@
 
 
 .header-actions{display:flex;align-items:center;gap:12px}#settings-dialog select{display:block;width:100%;margin-top:0}#settings-dialog .actions{margin-top:20px}#settings-status{font-size:13px;color:#a04435}#settings-dialog{width:min(430px,90vw)}
+
+
+.public-intro{padding:25px 0 0;border-bottom:1px solid #dfe5dc;padding-bottom:20px}.public-intro nav{font-size:12px;margin-bottom:18px}.public-intro a{color:#365640}.public-intro a[aria-current="page"]{font-weight:700}.public-intro p{font-size:13px;line-height:1.8;max-width:800px}

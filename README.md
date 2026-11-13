@@ -1,6 +1,6 @@
 # Memo Local — PoC 1
 
-메모 핵심 기능을 먼저 검증하는 정적 웹앱입니다. 설치할 패키지나 빌드 과정이 없습니다.
+메모 핵심 기능을 먼저 검증하는 정적 웹앱입니다. 외부 패키지 설치 없이 Node 빌드로 언어별 정적 HTML을 생성합니다.
 
 ## 기능
 
@@ -22,14 +22,15 @@
 저장소 루트에서 실행:
 
 ```bash
-python -m http.server 8000 --directory .
+node build.cjs
+python -m http.server 8000 --directory dist
 ```
 
 브라우저에서 http://localhost:8000 을 엽니다. localhost 또는 HTTPS로 실행하세요.
 
 ## Vercel 배포
 
-저장소를 연결한 후 Root Directory를 `.`, Framework Preset을 `Other`로 선택합니다. Build Command는 비워 두고 Output Directory는 `.`로 설정합니다. API 키나 환경변수는 필요하지 않습니다. 이번 작업에서는 배포하지 않았습니다.
+저장소를 연결한 후 Root Directory를 `.`, Framework Preset을 `Other`로 선택합니다. Build Command는 `node build.cjs`, Output Directory는 `dist`입니다. vercel.json 설정을 사용하고 기존 UI override가 다르면 해제하세요. API 키는 필요하지 않습니다.
 
 ## 저장 범위
 
@@ -126,3 +127,15 @@ node --test transfer.test.cjs
 설정에서 English(기본), 한국어, Deutsch를 선택하고 저장합니다. 화면·버튼·접근성 이름·확인창·오류·페이지 정보·JSON 병합 안내와 날짜 형식을 번역합니다. 기존 설정에 언어가 없으면 영어를 적용합니다. 선택 언어는 이 브라우저에 저장하며 메모 원문과 JSON 데이터는 번역하거나 변경하지 않습니다. 언어 변경 시 열려 있던 가져오기 미리보기와 전체 보기 창은 닫습니다.
 
 검증: `node --test transfer.test.cjs i18n.test.cjs`
+
+
+## 언어별 URL과 검색
+
+- `/en/`, `/ko/`, `/de/`에서 해당 언어의 정적 초기 HTML, title, description, 공개 서비스 소개를 제공합니다. `/`는 영어를 제공하며 canonical은 `/en/`입니다.
+- 같은 번역 사전을 빌드와 브라우저에서 재사용합니다. 동적 메시지는 JavaScript로 계속 번역합니다.
+- URL 언어가 저장된 언어보다 우선입니다. 설정에서 언어 저장 시 해당 언어 URL로 이동합니다. 입력 중인 메모는 먼저 저장/취소해야 합니다. 공개 언어 링크도 동일하게 보호합니다.
+- 같은 도메인의 언어 경로는 기존 브라우저 메모를 공유합니다. 메모 원문을 빌드 산출물이나 sitemap에 넣지 않습니다.
+- Vercel 환경변수 `SITE_URL`에 고정 운영 Origin(예: `https://example.com`)을 지정하면 canonical·hreflang·sitemap·robots에 사용합니다. 없으면 `VERCEL_PROJECT_PRODUCTION_URL`을 사용합니다. Preview 주소를 SITE_URL에 넣지 마세요.
+- Preview/development에는 noindex와 robots 차단을 적용합니다. Origin이 없을 때도 검색 제외합니다. 검색 제외는 보안 접근 제어가 아닙니다.
+- sitemap에는 세 언어의 공개 URL만 포함합니다. 운영 배포 후 Google Search Console에서 `/sitemap.xml`을 제출하세요. 색인 여부는 Google 판단에 따릅니다.
+- 수동 개발 시 `SITE_URL=https://example.com node build.cjs`로 검색 메타데이터를 확인할 수 있습니다. Vercel의 기존 Build/Output override도 확인하세요.
