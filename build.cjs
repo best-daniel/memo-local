@@ -17,8 +17,7 @@ function render(template,messages,lang,base,indexable){
  let head=`<meta name="robots" content="${indexable?'index,follow':'noindex,nofollow'}">`;
  if(base){head+=`<link rel="canonical" href="${escape(base)}/${lang}/">`;for(const l of languages)head+=`<link rel="alternate" hreflang="${l}" href="${escape(base)}/${l}/">`;head+=`<link rel="alternate" hreflang="x-default" href="${escape(base)}/en/">`;}
  html=html.replace('</head>',head+'</head>');
- const nav=languages.map(l=>`<a href="/${l}/" lang="${l}" hreflang="${l}"${l===lang?' aria-current="page"':''}>${{en:'English',ko:'한국어',de:'Deutsch'}[l]}</a>`).join(' · ');
- return html.replace('<main>',`<main><section class="public-intro"><nav aria-label="${{en:'Language',ko:'언어',de:'Sprache'}[lang]}">${nav}</nav><h2>${escape(seo[lang].heading)}</h2><p>${escape(seo[lang].intro)}</p><p class="storage-note">${escape(seo[lang].privacy)}</p></section>`);
+ return html;
 }
 function build(dir=__dirname,env=process.env){
  const base=origin(env),indexable=Boolean(base)&&env.VERCEL_ENV!=='preview'&&env.VERCEL_ENV!=='development';
