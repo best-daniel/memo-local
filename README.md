@@ -104,3 +104,8 @@ node --test transfer.test.cjs
 현재 작업 저장소: https://github.com/best-daniel/memo-local
 
 기존 playground1/memoapp의 현재 파일을 이 저장소 최상위로 옮겼습니다. 원래 Git 커밋 이력은 playground1에 남습니다. 기본 메모는 main, Google Drive 확장은 feature/google_drive에서 관리합니다. 브라우저 저장 키는 호환성을 위해 memoapp 접두사를 유지합니다. Vercel에서는 새 저장소와 Root Directory `.`를 지정해야 하며 기존 환경변수/도메인/OAuth Origin 설정은 별도로 확인해야 합니다.
+
+
+## 메모 페이지
+
+목록 아래에서 페이지당 5·10·15·50개를 선택합니다. 기본값은 5개이고 선택은 브라우저에 기억합니다. 검색·정렬·표시 개수 변경과 JSON 병합 후 첫 페이지로 이동합니다. 새 메모 저장 시 검색을 해제하고 첫 페이지로 이동합니다. 삭제 등으로 페이지 수가 줄면 마지막 유효 페이지를 표시합니다. 검색·정렬은 전체 메모에 먼저 적용하며 JSON 백업은 페이지와 관계없이 전체 메모를 포함합니다.

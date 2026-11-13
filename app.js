@@ -2,6 +2,11 @@
 const KEY = 'memoapp.notes.v1';
 const BACKUP_KEY = 'memoapp.preImportBackup.v1';
 let pendingImport = null;
+const PAGE_SIZE_KEY = 'memoapp.pageSize.v1';
+const PAGE_SIZES = [5, 10, 15, 50];
+let currentPage = 1;
+let pageSize = 5;
+try { const saved = Number(localStorage.getItem(PAGE_SIZE_KEY)); if (PAGE_SIZES.includes(saved)) pageSize = saved; } catch {}
 const $ = (id) => document.getElementById(id);
 let notes = [];
 let editingId = null;
@@ -46,13 +51,31 @@ function render() {
   const field = $('sort').value;
   const filtered = MemoTransfer.sort(notes.filter(n => n.content.toLocaleLowerCase().includes(query)), field);
   $('results').textContent = query ? `${filtered.length}개의 검색 결과` : ($('sort').value === 'createdAt' ? '최근 작성한 메모부터 표시합니다' : '최근 수정한 메모부터 표시합니다');
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  currentPage = Math.min(Math.max(1, currentPage), pages);
+  const start = (currentPage - 1) * pageSize;
+  const visible = filtered.slice(start, start + pageSize);
+  $('page-range').textContent = `${query ? '검색 결과' : '전체'} ${filtered.length}개 · ${filtered.length ? start + 1 : 0}–${start + visible.length}번째 표시`;
+  $('page-prev').disabled = currentPage === 1;
+  $('page-next').disabled = currentPage === pages;
+  $('page-numbers').replaceChildren();
+  const pageNumbers = [...new Set([1, currentPage - 1, currentPage, currentPage + 1, pages])].filter(n => n >= 1 && n <= pages).sort((a,b) => a-b);
+  let lastPageNumber = 0;
+  for (const number of pageNumbers) {
+    if (lastPageNumber && number - lastPageNumber > 1) { const gap = document.createElement('span'); gap.textContent = '…'; $('page-numbers').append(gap); }
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = number;
+    button.setAttribute('aria-label', `${number}페이지`);
+    if (number === currentPage) button.setAttribute('aria-current', 'page');
+    button.addEventListener('click', () => { currentPage = number; render(); });
+    $('page-numbers').append(button); lastPageNumber = number;
+  }
   $('list').replaceChildren();
   if (!filtered.length) {
     const empty = document.createElement('div'); empty.className = 'empty';
     empty.textContent = query ? '검색 결과가 없습니다.' : '아직 메모가 없습니다. 첫 번째 생각을 기록해 보세요.';
     $('list').append(empty);
   }
-  for (const note of filtered) {
+  for (const note of visible) {
     const fragment = $('note-template').content.cloneNode(true);
     const display = splitContent(note.content);
     fragment.querySelector('h3').textContent = display.title || '제목 없음';
@@ -88,11 +111,21 @@ $('memo-form').addEventListener('submit', event => {
   const previous = notes.find(n => n.id === editingId);
   const note = {id:previous?.id || crypto.randomUUID(), content:body, createdAt:previous?.createdAt || now, updatedAt:now, ...(previous?.conflictOf ? {conflictOf:previous.conflictOf} : {})};
   if (!persist([note, ...notes.filter(n => n.id !== note.id)])) return;
+  if (!previous) { currentPage = 1; $('search').value = ''; }
   resetEditor(); render(); status('메모를 저장했습니다.');
 });
 $('cancel').addEventListener('click', () => { if (canLeaveEditor()) resetEditor(); });
 $('body').addEventListener('input', () => { $('characters').textContent = `${$('body').value.length.toLocaleString()}자`; });
-$('search').addEventListener('input', render);
+$('search').addEventListener('input', () => { currentPage = 1; render(); });
+$('page-size').value = String(pageSize);
+$('page-size').addEventListener('change', () => {
+  const selected = Number($('page-size').value);
+  pageSize = PAGE_SIZES.includes(selected) ? selected : 5; currentPage = 1;
+  try { localStorage.setItem(PAGE_SIZE_KEY, String(pageSize)); } catch { status('표시 개수를 기억하지 못했습니다. 현재 화면에는 적용했습니다.'); }
+  render();
+});
+$('page-prev').addEventListener('click', () => { currentPage--; render(); });
+$('page-next').addEventListener('click', () => { currentPage++; render(); });
 $('memo-form').addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); $('memo-form').requestSubmit(); } });
 function downloadBackup(data, prefix = 'memoapp') {
   const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type:'application/json'}));
@@ -103,7 +136,7 @@ function downloadBackup(data, prefix = 'memoapp') {
 }
 function backupData() { return {version:1, exportedAt:new Date().toISOString(), notes}; }
 function clearImport() { pendingImport = null; $('import-preview').hidden = true; $('import-file').value = ''; }
-$('sort').addEventListener('change', render);
+$('sort').addEventListener('change', () => { currentPage = 1; render(); });
 $('export').addEventListener('click', () => {
   if (!storageHealthy) { status('저장소를 읽을 수 없어 내보내기를 중단했습니다.'); return; }
   downloadBackup(backupData()); status('메모 백업 다운로드를 요청했습니다.');
@@ -144,7 +177,7 @@ $('import-confirm').addEventListener('click', () => {
     localStorage.setItem(BACKUP_KEY, JSON.stringify(backup));
     downloadBackup(backup, 'memoapp-before-import');
     if (!persist(pendingImport.plan.notes)) return;
-    clearImport(); $('sort').value = 'createdAt'; render();
+    clearImport(); currentPage = 1; $('sort').value = 'createdAt'; render();
     status('병합했습니다. 원래 작성일 최신순으로 정렬했습니다. 병합 전 백업 다운로드도 확인하세요.');
   } catch { status('백업 또는 병합을 완료하지 못했습니다. 기존 메모는 유지됩니다. 저장 공간과 다운로드 설정을 확인하세요.'); }
 });
@@ -164,4 +197,5 @@ window.addEventListener('storage', event => {
   if (storageHealthy) status('다른 탭의 변경을 반영했습니다. 입력 중인 내용은 유지됩니다.');
 });
 notes = loadNotes(); render();
+
 
