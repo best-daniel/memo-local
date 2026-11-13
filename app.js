@@ -11,6 +11,11 @@ try { const saved = localStorage.getItem(LAYOUT_KEY); if (LAYOUTS.includes(saved
 let currentPage = 1;
 let pageSize = 5;
 try { const saved = Number(localStorage.getItem(PAGE_SIZE_KEY)); if (PAGE_SIZES.includes(saved)) pageSize = saved; } catch {}
+const SETTINGS_KEY = 'memoapp.settings.v1';
+try {
+  const settings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null');
+  if (settings && LAYOUTS.includes(settings.layout) && PAGE_SIZES.includes(settings.pageSize)) { layout = settings.layout; pageSize = settings.pageSize; }
+} catch {}
 const $ = (id) => document.getElementById(id);
 let notes = [];
 let editingId = null;
@@ -73,7 +78,6 @@ function render() {
     button.addEventListener('click', () => { currentPage = number; render(); });
     $('page-numbers').append(button); lastPageNumber = number;
   }
-  for (const type of LAYOUTS) $('layout-' + type).setAttribute('aria-pressed', String(layout === type));
   $('list').className = layout === 'sticky' ? 'sticky-grid' : '';
   $('list').hidden = layout === 'table' && filtered.length > 0;
   $('table-wrap').hidden = layout !== 'table' || !filtered.length;
@@ -131,18 +135,25 @@ $('memo-form').addEventListener('submit', event => {
 });
 $('cancel').addEventListener('click', () => { if (canLeaveEditor()) resetEditor(); });
 $('body').addEventListener('input', () => { $('characters').textContent = `${$('body').value.length.toLocaleString()}자`; });
-for (const type of LAYOUTS) $('layout-' + type).addEventListener('click', () => {
-  layout = type;
-  try { localStorage.setItem(LAYOUT_KEY, layout); } catch { status('보기 방식을 기억하지 못했습니다. 현재 화면에는 적용했습니다.'); }
-  render();
-});
 $('search').addEventListener('input', () => { currentPage = 1; render(); });
-$('page-size').value = String(pageSize);
-$('page-size').addEventListener('change', () => {
-  const selected = Number($('page-size').value);
-  pageSize = PAGE_SIZES.includes(selected) ? selected : 5; currentPage = 1;
-  try { localStorage.setItem(PAGE_SIZE_KEY, String(pageSize)); } catch { status('표시 개수를 기억하지 못했습니다. 현재 화면에는 적용했습니다.'); }
-  render();
+$('settings-open').addEventListener('click', () => {
+  $('settings-layout').value = layout;
+  $('page-size').value = String(pageSize);
+  $('settings-status').textContent = '';
+  $('settings-dialog').showModal();
+});
+$('settings-cancel').addEventListener('click', () => $('settings-dialog').close());
+$('settings-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const nextLayout = $('settings-layout').value;
+  const nextSize = Number($('page-size').value);
+  if (!LAYOUTS.includes(nextLayout) || !PAGE_SIZES.includes(nextSize)) {
+    $('settings-status').textContent = '보기 방법과 표시 개수를 확인하세요.'; return;
+  }
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify({layout:nextLayout, pageSize:nextSize})); }
+  catch { $('settings-status').textContent = '설정을 저장하지 못했습니다. 브라우저 저장소 설정을 확인하세요.'; return; }
+  layout = nextLayout; pageSize = nextSize; currentPage = 1;
+  $('settings-dialog').close(); render(); status('설정을 저장했습니다. 다음 접속에도 적용됩니다.');
 });
 $('page-prev').addEventListener('click', () => { currentPage--; render(); });
 $('page-next').addEventListener('click', () => { currentPage++; render(); });
@@ -217,6 +228,7 @@ window.addEventListener('storage', event => {
   if (storageHealthy) status('다른 탭의 변경을 반영했습니다. 입력 중인 내용은 유지됩니다.');
 });
 notes = loadNotes(); render();
+
 
 
 
