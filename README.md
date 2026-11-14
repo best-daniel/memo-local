@@ -139,3 +139,6 @@ node --test transfer.test.cjs
 - Preview/development에는 noindex와 robots 차단을 적용합니다. Origin이 없을 때도 검색 제외합니다. 검색 제외는 보안 접근 제어가 아닙니다.
 - sitemap에는 세 언어의 공개 URL만 포함합니다. 운영 배포 후 Google Search Console에서 `/sitemap.xml`을 제출하세요. 색인 여부는 Google 판단에 따릅니다.
 - 수동 개발 시 `SITE_URL=https://example.com node build.cjs`로 검색 메타데이터를 확인할 수 있습니다. Vercel의 기존 Build/Output override도 확인하세요.
+
+## 첫 접속 언어
+루트 `/` 또는 `/index.html` 접속 시 저장된 설정 언어를 우선 사용하고, 없으면 navigator.languages의 지원 언어 중 우선순위가 가장 높은 언어로 이동합니다. 지원하지 않으면 영어입니다. `/en/`, `/ko/`, `/de/` 직접 접속은 URL이 우선이며 저장된 선택을 덮어쓰지 않습니다. 설정에서 저장한 언어는 기존 localStorage 설정에 유지합니다. 자동 감지 결과는 명시적 사용자 선택으로 저장하지 않습니다. 외부 IP API나 쿠키는 사용하지 않습니다. JS가 비활성화되면 루트의 영어 HTML이 유지됩니다. 같은 도메인의 메모는 공유됩니다.

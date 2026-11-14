@@ -19,7 +19,7 @@ try {
   if (settings && LAYOUTS.includes(settings.layout) && PAGE_SIZES.includes(settings.pageSize)) { layout = settings.layout; pageSize = settings.pageSize; }
 } catch {}
 const urlLanguage = location.pathname.match(/^\/(en|ko|de)(?:\/|$)/)?.[1];
-language = urlLanguage || (location.pathname === '/' ? 'en' : language);
+language = urlLanguage || MemoLanguage.current || language;
 MemoI18n.apply(language);
 const $ = (id) => document.getElementById(id);
 let notes = [];

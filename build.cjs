@@ -23,7 +23,7 @@ function build(dir=__dirname,env=process.env){
  const base=origin(env),indexable=Boolean(base)&&env.VERCEL_ENV!=='preview'&&env.VERCEL_ENV!=='development';
  const source=fs.readFileSync(path.join(dir,'i18n.js'),'utf8');const messages=JSON.parse(source.split('const messages = ')[1].split(';\nlet language')[0]);
  const template=fs.readFileSync(path.join(dir,'index.html'),'utf8');const out=path.join(dir,'dist');fs.mkdirSync(out,{recursive:true});
- for(const f of ['style.css','app.js','transfer.js','i18n.js'])fs.copyFileSync(path.join(dir,f),path.join(out,f));
+ for(const f of ['style.css','app.js','transfer.js','i18n.js','language.js'])fs.copyFileSync(path.join(dir,f),path.join(out,f));
  for(const lang of languages){fs.mkdirSync(path.join(out,lang),{recursive:true});fs.writeFileSync(path.join(out,lang,'index.html'),render(template,messages,lang,base,indexable));}
  fs.writeFileSync(path.join(out,'index.html'),render(template,messages,'en',base,indexable));
  fs.writeFileSync(path.join(out,'robots.txt'),indexable?`User-agent: *\nAllow: /\nSitemap: ${base}/sitemap.xml\n`:'User-agent: *\nDisallow: /\n');
